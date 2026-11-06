@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loan Tracker</title>
+<style>
+  :root{
+    --accent:#6d4aff;
+    --accent-soft:#efeaff;
+    --bg:#f6f5fb;
+    --card:#ffffff;
+    --text:#1c1a27;
+    --muted:#6b6880;
+    --border:#e4e2ee;
+    --danger:#d64550;
+    --ok:#1e9e6a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;padding:24px 16px 60px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:1.6rem;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+  h1 .dot{width:14px;height:14px;border-radius:4px;background:var(--accent);display:inline-block}
+  .sub{color:var(--muted);margin-bottom:24px;font-size:.95rem}
+
+  /* ---------- cards ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:16px 18px;box-shadow:0 1px 3px rgba(28,26,39,.05);
+  }
+  .card h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:6px}
+  .card .value{font-size:1.35rem;font-weight:700;white-space:nowrap}
+  .card .sub{font-size:.82rem;margin:4px 0 0;color:var(--muted)}
+  .card.highlight{border-color:var(--accent);background:var(--accent-soft)}
+
+  .progress-card{margin-bottom:14px}
+  .progress-track{height:12px;background:var(--accent-soft);border-radius:999px;overflow:hidden;margin-top:10px}
+  .progress-fill{height:100%;background:var(--accent);border-radius:999px;transition:width .4s ease;width:0}
+  .progress-labels{display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-top:6px;gap:10px;flex-wrap:wrap}
+
+  /* ---------- table ---------- */
+  .table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(28,26,39,.05)}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:900px}
+  thead th{
+    position:sticky;top:0;background:var(--card);
+    text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);padding:12px 14px;border-bottom:2px solid var(--border);white-space:nowrap;
+  }
+  thead th:nth-child(-n+2), tbody td:nth-child(-n+2){text-align:left}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.paid td{color:var(--muted)}
+  tbody tr.paid td:first-child{position:relative}
+  tbody tr.paid td:first-child::after{content:" ✓";color:var(--ok);font-weight:700}
+  tr.crossover td{border-top:2px solid var(--accent);border-bottom:2px solid var(--accent);background:var(--accent-soft)}
+  tr.crossover td:first-child{border-left:2px solid var(--accent)}
+  tr.crossover td:last-child{border-right:2px solid var(--accent)}
+  .paid-check{transform:scale(1.25);accent-color:var(--ok);cursor:pointer}
+  .saved-input{
+    width:120px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;
+    text-align:right;font:inherit;font-variant-numeric:tabular-nums;
+  }
+  .saved-input:focus{outline:2px solid var(--accent);border-color:transparent}
+  .table-note{padding:12px 16px;font-size:.83rem;color:var(--muted);border-top:1px solid var(--border);background:#fafafe}
+
+  /* ---------- form & footer actions ---------- */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;margin-top:14px;box-shadow:0 1px 3px rgba(28,26,39,.05)}
+  .panel h2{font-size:1.05rem;margin-bottom:14px}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+  label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+  input[type="text"],input[type="number"],input[type="date"]{
+    width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font:inherit;background:#fff;
+  }
+  input:focus{outline:2px solid var(--accent);border-color:transparent}
+  .form-error{color:var(--danger);font-size:.85rem;margin-bottom:10px;min-height:1.2em}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    font:inherit;font-weight:600;padding:10px 18px;border-radius:9px;border:none;cursor:pointer;
+    transition:filter .15s ease;
+  }
+  button:hover{filter:brightness(1.08)}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-secondary{background:var(--accent-soft);color:var(--accent)}
+  .btn-danger{background:#fdeef0;color:var(--danger)}
+  .footer-actions{margin-top:22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+  .backup-note{margin-top:10px;font-size:.8rem;color:var(--muted);text-align:right}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot"></span>Loan Tracker</h1>
+  <p class="sub">Follow your loan month by month — and see when your savings would cover what you still owe.</p>
+  <div id="app"></div>
+</div>
+
+<script>
+"use strict";
+const LS_KEY = "loan-tracker-v1";
+
+let state = load();
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(s && typeof s==="object") return s; }catch(e){}
+  return { loan:null, overrides:{} };
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+/* ---------- formatting ---------- */
+function fmt(n){
+  return new Intl.NumberFormat("hu-HU",{maximumFractionDigits:0}).format(Math.round(n)) + " Ft";
+}
+function fmtDate(d){
+  return d.toLocaleDateString("hu-HU",{year:"numeric",month:"short",day:"numeric"});
+}
+function addMonths(d, m){
+  const y=d.getFullYear(), mo=d.getMonth(), day=d.getDate();
+  const t=new Date(y, mo+m, 1);
+  const dim=new Date(y, mo+m+1, 0).getDate();
+  t.setDate(Math.min(day, dim));
+  return t;
+}
+
+/* ---------- math ---------- */
+function buildSchedule(loan){
+  const r = loan.ratePct/100/12;
+  const n = loan.termMonths;
+  const P = loan.amount;
+  const basePayment = r>0 ? P*r/(1-Math.pow(1+r,-n)) : P/n;
+  const payment = Math.ceil(basePayment);
+  let bal = P;
+  const rows = [];
+  for(let i=1;i<=n;i++){
+    const interest = Math.round(bal*r);
+    let principal = payment - interest;
+    let pay = payment;
+    if(i===n || principal >= bal){ principal = bal; pay = principal + interest; }
+    bal -= principal;
+    rows.push({
+      i, date: addMonths(loan.startDate, i),
+      payment: pay, interest, principal, balance: bal,
+      paid: false, savedIn: null, net: 0, savingsTotal: 0
+    });
+  }
+  return rows;
+}
+
+function derive(){
+  if(!state.loan) return null;
+  const loan = {
+    ...state.loan,
+    amount:+state.loan.amount,
+    ratePct:+state.loan.ratePct,
+    termMonths:+state.loan.termMonths,
+    startDate:new Date(state.loan.startDate)
+  };
+  const rows = buildSchedule(loan);
+  let cum = 0, crossoverIdx = -1;
+  for(const row of rows){
+    const ov = state.overrides[row.i] || {};
+    row.paid = !!ov.paid;
+    row.savedIn = (ov.saved === undefined || ov.saved === null) ? null : +ov.saved;
+    row.net = (row.savedIn ?? row.payment) - row.payment;
+    cum += row.net;
+    row.savingsTotal = cum;
+    if(crossoverIdx === -1 && cum >= row.balance) crossoverIdx = row.i;
+  }
+
+  const paidRows = rows.filter(r=>r.paid);
+  const lastPaid = paidRows.length ? paidRows[paidRows.length-1] : null;
+  const remainingBalance = lastPaid ? lastPaid.balance : loan.amount;
+  const principalRepaid = loan.amount - remainingBalance;
+  const progressPct = loan.amount>0 ? principalRepaid/loan.amount*100 : 0;
+  const interestPaid = paidRows.reduce((s,r)=>s+r.interest,0);
+  const totalInterest = rows.reduce((s,r)=>s+r.interest,0);
+  const nextRow = rows.find(r=>!r.paid);
+  const savedSoFar = paidRows.reduce((s,r)=>s+r.net,0);
+  const savedPct = remainingBalance>0 ? savedSoFar/remainingBalance*100 : 0;
+
+  return { loan, rows, crossoverIdx, remainingBalance, principalRepaid,
+           progressPct, interestPaid, totalInterest, nextRow, savedSoFar, savedPct };
+}
+
+/* ---------- rendering ---------- */
+const app = document.getElementById("app");
+let editing = false;
+
+function renderApp(){
+  if(!state.loan){ renderFormOnly(); return; }
+  const d = derive();
+  const L = d.loan;
+  const nextDue = d.nextRow ? fmtDate(d.nextRow.date) : "Paid off 🎉";
+  const payoff = d.rows[d.rows.length-1];
+  const cov = d.crossoverIdx !== -1 ? d.rows.find(r=>r.i===d.crossoverIdx) : null;
+
+  const cards = `
+  <div class="cards">
+    <div class="card"><h3>Remaining balance</h3><div class="value" id="c-balance">${fmt(d.remainingBalance)}</div>
+      <p class="sub" id="c-balance-sub">of ${fmt(L.amount)} original</p></div>
+    <div class="card"><h3>Monthly payment</h3><div class="value">${fmt(d.rows[0].payment)}</div>
+      <p class="sub">${L.ratePct}% annual · ${L.termMonths} months</p></div>
+    <div class="card"><h3>Next due date</h3><div class="value" id="c-next">${nextDue}</div>
+      <p class="sub" id="c-next-sub">${d.nextRow ? "payment #" + d.nextRow.i : "all payments done"}</p></div>
+    <div class="card"><h3>Projected payoff</h3><div class="value" id="c-payoff">${fmtDate(payoff.date)}</div>
+      <p class="sub">final payment ${fmt(payoff.payment)}</p></div>
+    <div class="card"><h3>Interest paid so far</h3><div class="value" id="c-interest">${fmt(d.interestPaid)}</div>
+      <p class="sub" id="c-interest-sub">of ${fmt(d.totalInterest)} total interest</p></div>
+    <div class="card ${cov ? "highlight":""}"><h3>Savings reach balance</h3>
+      <div class="value" id="c-crossover">${cov ? fmtDate(cov.date) : "—"}</div>
+      <p class="sub" id="c-crossover-sub">${cov
+        ? "saved " + fmt(cov.savingsTotal) + " vs. owed " + fmt(cov.balance) + " (row outlined below)"
+        : "planned savings never reach the balance within the term"}</p></div>
+  </div>
+
+  <div class="card progress-card">
+    <h3>Progress</h3>
+    <div class="progress-track"><div class="progress-fill" id="p-fill" style="width:${d.progressPct.toFixed(1)}%"></div></div>
+    <div class="progress-labels">
+      <span id="p-label">${d.progressPct.toFixed(1)}% repaid (${fmt(d.principalRepaid)})</span>
+      <span id="c-saved">Saved so far: ${fmt(d.savedSoFar)} · covers ${d.savedPct.toFixed(1)}% of remaining balance</span>
+    </div>
+  </div>`;
+
+  const bodyRows = d.rows.map(r=>`
+    <tr data-i="${r.i}" class="${r.paid?"paid ":""}${r.i===d.crossoverIdx?"crossover":""}">
+      <td>${r.i}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${fmt(r.payment)}</td>
+      <td>${fmt(r.interest)}</td>
+      <td>${fmt(r.principal)}</td>
+      <td>${fmt(r.balance)}</td>
+      <td><input type="checkbox" class="paid-check" aria-label="Mark payment ${r.i} as paid" ${r.paid?"checked":""}></td>
+      <td><input type="number" step="any" min="0" class="saved-input" value="${r.savedIn ?? ""}"
+           placeholder="${r.payment}" aria-label="Saved amount for payment ${r.i}"></td>
+      <td class="savings-total">${fmt(r.savingsTotal)}</td>
+    </tr>`).join("");
+
+  const table = `
+  <div class="table-card">
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Due date</th><th>Payment</th><th>Interest</th><th>Principal</th>
+        <th>Balance after</th><th>Paid</th><th>Saved</th><th>Savings total</th>
+      </tr></thead>
+      <tbody id="tbody">${bodyRows}</tbody>
+    </table>
+    </div>
+    <div class="table-note">
+      Saved defaults to your monthly payment — leaving it as-is adds nothing to savings. Enter 600 with a 450 payment and 150 is added;
+      enter less and the total drops. Clear a cell to restore the default. Savings are assumed to earn no interest.
+      The outlined row is the first month your savings cover the outstanding balance.
+    </div>
+  </div>`;
+
+  const form = loanFormHtml(L);
+
+  app.innerHTML = cards + table +
+    `<div class="panel" id="edit-panel" ${editing?"":"hidden"}>
+       <h2>Edit loan</h2>${form}
+     </div>
+     <div class="footer-actions">
+       <button class="btn-secondary" id="btn-export">⬇ Export backup</button>
+       <button class="btn-secondary" id="btn-import">⬆ Import backup</button>
+       <input type="file" id="import-file" accept=".json,application/json" class="hidden">
+       <button class="btn-secondary" id="btn-edit">${editing?"Close editor":"✏️ Edit loan"}</button>
+       <button class="btn-danger" id="btn-delete">🗑 Delete loan</button>
+     </div>
+     <p class="backup-note">Export saves a small backup file with your loan and all marked payments — keep it somewhere safe (e.g. Files or iCloud Drive) and use Import to restore or move to another device.</p>`;
+
+  wireForm();
+  document.getElementById("btn-edit").addEventListener("click", ()=>{
+    editing = !editing;
+    document.getElementById("edit-panel").hidden = !editing;
+    document.getElementById("btn-edit").textContent = editing ? "Close editor" : "✏️ Edit loan";
+  });
+  document.getElementById("btn-delete").addEventListener("click", ()=>{
+    if(confirm("Delete this loan and all tracked payments? This cannot be undone.")){
+      state = { loan:null, overrides:{} };
+      save(); renderApp();
+    }
+  });
+
+  /* ---------- export / import ---------- */
+  document.getElementById("btn-export").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "loan-tracker-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  });
+
+  const fileInput = document.getElementById("import-file");
+  document.getElementById("btn-import").addEventListener("click", ()=>fileInput.click());
+  fileInput.addEventListener("change", ()=>{
+    const file = fileInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const s = JSON.parse(reader.result);
+        if(!s || typeof s !== "object" || !s.loan ||
+           typeof +s.loan.amount !== "number" || !(+s.loan.amount > 0) ||
+           !s.loan.startDate) throw new Error("invalid");
+        state = { loan:s.loan, overrides:(s.overrides && typeof s.overrides==="object") ? s.overrides : {} };
+        editing = false;
+        save(); renderApp();
+      }catch(err){
+        alert("That file doesn't look like a Loan Tracker backup. Please choose a loan-tracker-backup.json file.");
+      }
+    };
+    reader.readAsText(file);
+    fileInput.value = "";
+  });
+
+  wireTable();
+}
+
+function loanFormHtml(L){
+  const today = new Date().toISOString().slice(0,10);
+  const v = k => L ? `value="${L[k]}"` : "";
+  return `
+  <form id="loan-form">
+    <div class="form-grid">
+      <div><label for="f-name">Loan name (optional)</label>
+        <input type="text" id="f-name" placeholder="e.g. Home mortgage" ${L?`value="${(L.name||"").replace(/"/g,"&quot;")}"`:""}></div>
+      <div><label for="f-amount">Loan amount (Ft)</label>
+        <input type="number" id="f-amount" min="1" step="any" required ${v("amount")} placeholder="10000000"></div>
+      <div><label for="f-rate">Annual interest rate (%)</label>
+        <input type="number" id="f-rate" min="0" max="100" step="any" required ${v("ratePct")} placeholder="7.5"></div>
+      <div><label for="f-term">Term (months)</label>
+        <input type="number" id="f-term" min="1" max="600" step="1" required ${v("termMonths")} placeholder="120"></div>
+      <div><label for="f-start">Start date (first payment one month later)</label>
+        <input type="date" id="f-start" required ${L?`value="${L.startDate}"`:`value="${today}"`}></div>
+    </div>
+    <p class="form-error" id="form-error"></p>
+    <div class="actions">
+      <button type="submit" class="btn-primary">${L?"Update loan":"Create loan schedule"}</button>
+    </div>
+  </form>`;
+}
+
+function renderFormOnly(){
+  app.innerHTML = `<div class="panel"><h2>Set up your loan</h2>${loanFormHtml(null)}</div>`;
+  wireForm();
+}
+
+function wireForm(){
+  const form = document.getElementById("loan-form");
+  if(!form) return;
+  form.addEventListener("submit", e=>{
+    e.preventDefault();
+    const err = document.getElementById("form-error");
+    const g = id => document.getElementById(id);
+    const amount = +g("f-amount").value, rate = +g("f-rate").value,
+          term = +g("f-term").value, start = g("f-start").value;
+    if(!(amount>0)){ err.textContent="Please enter a loan amount greater than zero."; return; }
+    if(!(rate>=0)){ err.textContent="Interest rate cannot be negative."; return; }
+    if(!(term>=1 && Number.isInteger(term))){ err.textContent="Term must be a whole number of months (at least 1)."; return; }
+    if(!start){ err.textContent="Please choose a start date."; return; }
+    const keep = state.loan ? {...state.overrides} : {};
+    if(state.loan){
+      // drop overrides beyond the new term
+      for(const k of Object.keys(keep)) if(+k > term) delete keep[k];
+    }
+    state = {
+      loan:{ name:g("f-name").value.trim(), amount, ratePct:rate, termMonths:term, startDate:start },
+      overrides:keep
+    };
+    editing = false;
+    save(); renderApp();
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+}
+
+function wireTable(){
+  const tbody = document.getElementById("tbody");
+  if(!tbody) return;
+  tbody.addEventListener("change", e=>{
+    const tr = e.target.closest("tr[data-i]");
+    if(!tr) return;
+    const i = +tr.dataset.i;
+    const ov = {...(state.overrides[i]||{})};
+    if(e.target.classList.contains("paid-check")) ov.paid = e.target.checked;
+    else if(e.target.classList.contains("saved-input")){
+      const v = e.target.value.trim();
+      ov.saved = v==="" ? null : +v;
+      if(ov.saved !== null && !isFinite(ov.saved)) ov.saved = null;
+    } else return;
+    state.overrides[i] = ov;
+    save();
+    refreshDynamic();
+  });
+}
+
+/* update cards/cells without rebuilding the table, so typing keeps focus */
+function refreshDynamic(){
+  const d = derive();
+  if(!d) return;
+  const g = id => document.getElementById(id);
+  const nextDue = d.nextRow ? fmtDate(d.nextRow.date) : "Paid off 🎉";
+  g("c-balance").textContent = fmt(d.remainingBalance);
+  g("c-next").textContent = nextDue;
+  g("c-next-sub").textContent = d.nextRow ? "payment #" + d.nextRow.i : "all payments done";
+  g("c-interest").textContent = fmt(d.interestPaid);
+  g("p-fill").style.width = d.progressPct.toFixed(1) + "%";
+  g("p-label").textContent = `${d.progressPct.toFixed(1)}% repaid (${fmt(d.principalRepaid)})`;
+  g("c-saved").textContent = `Saved so far: ${fmt(d.savedSoFar)} · covers ${d.savedPct.toFixed(1)}% of remaining balance`;
+
+  const cov = d.crossoverIdx !== -1 ? d.rows.find(r=>r.i===d.crossoverIdx) : null;
+  g("c-crossover").textContent = cov ? fmtDate(cov.date) : "—";
+  g("c-crossover-sub").textContent = cov
+    ? "saved " + fmt(cov.savingsTotal) + " vs. owed " + fmt(cov.balance) + " (row outlined below)"
+    : "planned savings never reach the balance within the term";
+  document.querySelectorAll(".card.highlight").forEach(c=>c.classList.remove("highlight"));
+  if(cov) g("c-crossover").closest(".card").classList.add("highlight");
+
+  document.querySelectorAll("#tbody tr[data-i]").forEach(tr=>{
+    const i = +tr.dataset.i;
+    const row = d.rows[i-1];
+    tr.classList.toggle("paid", row.paid);
+    tr.classList.toggle("crossover", i === d.crossoverIdx);
+    tr.querySelector(".savings-total").textContent = fmt(row.savingsTotal);
+  });
+}
+
+renderApp();
+</script>
+</body>
+</html>
